@@ -1,0 +1,14 @@
+##################################################
+Ejemplos
+
+Paper: Modelos ocultos de Markov: 
+una aplicacion de estimación Bayesiana para series de tiempo financieras
+
+Authors: Lizbeth Naranjo Albarran, Luz Judith Rodriguez Esparza
+
+
+Journal: Mixba'al
+
+Year: 2023
+
+##################################################

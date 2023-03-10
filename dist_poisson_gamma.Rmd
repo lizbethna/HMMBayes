@@ -1,0 +1,96 @@
+---
+title: "Ejemplos"
+author: Lizbeth Naranjo Albarrán y Luz Judith Rodriguez Esparza 
+output: pdf_document
+---
+
+**Paper:** *Modelos ocultos de Markov: 
+una aplicación en series de tiempo*  
+
+**Authors:** Lizbeth Naranjo Albarrán \&
+Luz Judith Rodríguez Esparza  
+
+**Journal:** Mixba'al
+
+**Year:** 2023
+
+https://github.com/lizbethna/HMMaplica
+
+Este archivo muestra las instrucciones para correr los códigos de R y Stan.  
+
+# Distribución Gamma-Poisson 
+
+```{r, echo=TRUE, eval=TRUE, include=TRUE}
+library(ggplot2)   
+library(extraDistr)
+library(rstan)
+```
+
+## Simular datos 
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%"}
+N = 50   # tamaño de muestra
+theta = 3   # parametro de media
+a0 = 30; b0 = 10 # hiperparametros de la distribucion inicial
+
+set.seed(12345)
+x = rpois(N,theta)   # x ~ Poisson(theta)
+barplot(table(x), nclass=10, col="darkgreen")
+```
+
+## Graficas de las distribuciones final y predictiva final
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%"} 
+### Posterior
+a1 = a0+sum(x)
+b1 = b0+N
+the0 = seq(quantile(x,0.1),quantile(x,0.9),length.out=100)
+plot(the0,  dgamma(the0,a1,b1), main=paste0("Muestra suma X=",sum(x)," N=",N), 
+     xlab=expression(theta), ylab="Densidad", lty=3, lwd=4, col="blue", type="l")
+lines(the0, dgamma(the0,sum(x),N), lty=2, lwd=4)
+lines(the0,dgamma(the0,a0,b0), lty=1, lwd=4,  col="red")
+legend("topleft", legend=c("Prior","Verosimilitud","Posterior"), 
+       lty=c(1,2,3), col=c("red","black","blue"), lwd=2, cex=0.8)
+
+### Predictiva  Prior & Posterior
+x0 = (0:max(x))
+plot(x0,dgpois(x0, a1, b1), main=paste0("Muestra suma X=",sum(x), " N=",N), 
+     xlab="X", ylab="Densidad", type="h", lwd=2, col="blue")
+points(x0,dgpois(x0, a0, b0), col="red", pch=19, cex=1.5)
+legend("topright", legend=c("Predictiva Prior","Predictiva Posterior"), 
+       lty=c(NA,1), col=c("red","blue"), pch=c(19,NA), cex=0.8)
+```
+
+## Código Stan 
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", error=TRUE, out.width="50%"} 
+datos <- list( "x"=x, "N"=N,  # muestra
+              "a0"=a0,"b0"=b0)  # valores iniciales de la distribucion inicial
+param  = c("theta","x_star") # parametros a estimar
+fit_dist <- stan("dist_poisson_gamma.stan", data=datos,
+            chains=2, warmup=1000, iter=2000, thin=2)
+```
+
+## Resultados 
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", error=TRUE, out.width="50%"} 
+
+print(fit_dist, pars=param)
+stan_plot(fit_dist,pars=param)
+stan_ac(fit_dist,pars=param)
+stan_trace(fit_dist,pars=param)
+
+stan_dens(fit_dist,pars="theta", point_est = "mean", show_density = TRUE) + 
+  ggtitle(paste("Distribución final de theta")) + 
+  theme(axis.title.x=element_text(size=14), axis.title.y=element_text(size=14), 
+        plot.title = element_text(size=16)) 
+
+stan_hist(fit_dist,pars="x_star", point_est = "mean", show_density = TRUE) + 
+  ggtitle(paste("Distribución predictiva final de x_star")) + 
+  theme(axis.title.x=element_text(size=14), axis.title.y=element_text(size=14), 
+        plot.title = element_text(size=16)) 
+
+```
+
+
+

@@ -1,0 +1,132 @@
+---
+title: "Ejemplos"
+author: Lizbeth Naranjo Albarrán y Luz Judith Rodriguez Esparza 
+output: pdf_document
+---
+
+**Paper:** *Modelos ocultos de Markov: 
+una aplicación en series de tiempo*  
+
+**Authors:** Lizbeth Naranjo Albarrán \&
+Luz Judith Rodríguez Esparza  
+
+**Journal:** Mixba'al
+
+**Year:** 2023
+
+https://github.com/lizbethna/HMMaplica
+
+Este archivo muestra las instrucciones para correr los códigos de R y Stan.  
+
+# Cadenas de Markov 
+
+```{r, echo=TRUE, eval=TRUE, include=TRUE, cache=FALSE, message=FALSE, warning=FALSE}
+library(ggplot2)   
+library(extraDistr)
+library(rstan)
+```
+
+## Calcular probabilidades
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%"}
+### Datos 
+N = 100   #tamaño de muestra
+K = 4   # estados
+A = matrix(0,4,4)   # matriz de probabilidades de transicion
+A[1,] = c(0.3, 0.3, 0, 0.4)   # simplex: acelerar 
+A[2,] = c(0.2, 0.4, 0, 0.4)   # simplex: constante
+A[3,] = c(0.7, 0, 0.3, 0)   # simplex: reposo
+A[4,] = c(0.4, 0.1, 0.4, 0.1)   # simplex: freno
+rowSums(A)   # renglones suman 1
+
+di1 = c(0,0,0,1) # probabilidades del estado oculto inicial 
+```
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%"} 
+# Funcion para calcular la distribucion estacionaria delta1
+distr_estac = function(A){
+ n = nrow(A)
+ B = A - diag(n) # Substract the identity to the input matrix
+ B[,1] = rep(1,n) # Replace a column of ones
+ b = c(1,rep(0,n-1)) # Create the output vector (1,0,0,...,0)
+ di1 = solve(t(B),b) # Solve the system for di1
+ return(di1)
+}
+
+# distribucion estacionaria 
+(estac = distr_estac(A))
+# tiempo medio de recurrencia
+(tiempo = 1/estac)
+
+# probabilidad de observaciones
+prob_obs <- function(x1,A,di1){
+  n = length(x1)
+  px1 = rep(NA,n)
+  px1[1] = di1[x1[1]]
+  for(i in 2:n){
+    px1[i] = A[x1[i-1],x1[i]]
+  }
+  prod(px1)
+}
+x1 = c(4,4,4,1,1,4,2,4)
+prob_obs(x1,A,di1)
+```
+
+## Simular datos 
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="100%"}
+N = 100   # tamaño de muestra
+
+# Generar muestra de una cadena de Markov 
+# T = tamaño de la cadena de Markov
+# A = matriz de transicion
+CM_genera <- function(N,A,di1) {
+  K = ncol(A) #= nrow(A)
+  z <- vector("numeric", N)
+  z[1] <- sample(1:K, size = 1, prob = di1) 
+  for (t in 2:N)
+    z[t] <- sample(1:K, size = 1, prob = A[z[t - 1], ])
+  list(z = z, 
+       theta = list(di1 = di1, A = A))
+}
+
+
+cadena = CM_genera(N,A,di1) 
+plot(cadena$z, type="o",col=cadena$z,lwd=0.1,pch=19, 
+     xlab="Tiempo", ylab="Estados")
+
+```
+
+## Código Stan 
+
+Dada una muestra observada, se busca estimar las probabilidades de transición. 
+
+```{r,eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="100%", error=TRUE} 
+
+datos <- list( "z"=cadena$z, "N"=N, "K"=K,  # muestra
+              "alpha"=rep(2,K))  # valores iniciales de la distribucion inicial
+param  = c("theta") # parametros a estimar
+
+fit_cm <- stan("cadenas_markov.stan", data=datos,
+            chains=2, warmup=1000, iter=2000, thin=2)
+```
+
+## Resultados
+
+```{r,eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="100%", error=TRUE} 
+
+
+print(fit_cm, pars=param)
+stan_plot(fit_cm,pars=param)
+stan_ac(fit_cm,pars=param)
+stan_trace(fit_cm,pars=param)
+
+stan_dens(fit_cm,pars="theta", point_est = "mean", show_density = TRUE) + 
+  ggtitle(paste("Distribución final de theta")) + 
+  theme(axis.title.x=element_text(size=14), axis.title.y=element_text(size=14), 
+        plot.title = element_text(size=16)) 
+
+```
+
+
+

@@ -1,0 +1,169 @@
+---
+title: "Ejemplos"
+author: Lizbeth Naranjo Albarrán y Luz Judith Rodriguez Esparza 
+output: pdf_document
+---
+
+**Paper:** *Modelos ocultos de Markov: 
+una aplicación en series de tiempo*  
+
+**Authors:** Lizbeth Naranjo Albarrán \&
+Luz Judith Rodríguez Esparza  
+
+**Journal:** Mixba'al
+
+**Year:** 2023
+
+https://github.com/lizbethna/HMMaplica
+
+Este archivo muestra las instrucciones para correr los códigos de R y Stan.  
+
+# Markov switching GARCH 
+
+```{r, echo=TRUE, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE}
+library(ggplot2)   
+library(rstan) # RStan
+library(quantmod) # Quantitative Financial Modelling Framework
+```
+
+
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%"}
+
+plot_statepath <- function(zstar) {
+  K <- length(unique(as.vector(zstar)))
+  x <- index(zstar)
+  t <- 1:dim(zstar)[1]
+  opar <- par(no.readonly = TRUE)
+  zcol <- (1:K)[zstar] 
+  
+  layout(matrix(c(1, 2), nrow = 2, ncol = 1), heights = c(0.95, 0.05))
+  plot(x = x, y = zstar,
+    xlab = bquote(t), ylab = bquote(hat(z)[t]),
+    main = bquote("Secuencia mas probable de estados ocultos"),
+    ylim = c(1, K), type = 'l', col = 'gray')
+
+  points(x=x, y=zstar,
+           pch = 21, bg = zcol, col = zcol, cex = 0.7)
+
+  par(mai = c(0, 0, 0, 0))
+  plot.new()
+  legend(x = "center",
+         legend = c('Trayectoria mas probable', paste('Estado', 1:K)),
+         pch = c(NA, rep(21, K)),
+         lwd = c(2, rep(NA, K)),
+         col = c('lightgray', 1:K),
+         pt.bg = c('lightgray', 1:K),
+         bty = 'n', cex = 0.7,
+         horiz = TRUE)
+  par(opar)
+}
+
+```
+
+## Datos 
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%"}
+IBM <- getSymbols("IBM",src='yahoo', 
+           from = "2019-01-01", to = "2022-12-31", auto.assign = FALSE)   # Obtener los datos
+IBM.R <- na.omit(ROC(Ad(IBM)));   # Obtener los retornos
+
+plot(IBM, format.labels="%y-%m", col="blue", lwd=0.5)
+plot(IBM.R, format.labels="%y-%m", col="blue", lwd=0.5)
+```
+
+
+## Código Stan 
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", error=TRUE, out.width="50%" } 
+# Markov-switching GARCH
+msgarch_fit <- function(y) {
+  rstan_options(auto_write = TRUE)
+  options(mc.cores = parallel::detectCores())
+  
+  stan.model = 'hmm_garch.stan'
+  
+  y <- as.vector(coredata(y)); 
+  stan.data = list(
+    T = length(y),
+    y = y
+  )
+  
+  stan(file = stan.model,
+       data = stan.data, verbose = T,
+       iter = 1000, warmup = 500,
+       thin = 1, chains = 1,
+       cores = 1, seed = 900)
+}
+# Fit GARCH
+fit <- msgarch_fit(IBM.R)
+
+
+```
+## Resultados
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", error=TRUE, out.width="50%"} 
+
+round(summary(fit, pars=c("alpha0","alpha1","beta1","A"))$summary,3)
+round(summary(fit, pars=c("alpha0","alpha1","beta1","A"))$c_summary,3)
+
+```
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%"} 
+
+plot(fit,pars=c("alpha0","alpha1","beta1"))
+plot(fit,pars="p_remain")
+plot(fit,pars="A")
+
+stan_dens(fit,pars=c("alpha0","alpha1","beta1"), point_est = "mean", show_density = TRUE) + 
+  ggtitle(expression("Distribución final",alpha[0],alpha[1],beta[1])) + ylab("Densidad") + 
+  theme(axis.title.x=element_text(size=14), axis.title.y=element_text(size=14), 
+        plot.title = element_text(size=16)) 
+stan_dens(fit,pars="p_remain", point_est = "mean", show_density = TRUE) + 
+  ggtitle("Distribución final de p_remain") + ylab("Densidad") + 
+  theme(axis.title.x=element_text(size=14), axis.title.y=element_text(size=14), 
+        plot.title = element_text(size=16)) 
+stan_dens(fit,pars="A", point_est = "mean", show_density = TRUE) + 
+  ggtitle("Distribución final de A") + ylab("Densidad") + 
+  theme(axis.title.x=element_text(size=14), axis.title.y=element_text(size=14), 
+        plot.title = element_text(size=16)) 
+
+
+garch_posterior_means <- xts(apply(extract(fit, "sigma_t")[[1]], 2:3, mean), 
+                             index(IBM.R))
+colnames(garch_posterior_means) <- c("Low-Vol State", "High-Vol State")
+
+plot(
+  garch_posterior_means, 
+  main = "Estimaciones de las Varianzas", 
+  format.labels = "%y-%m"
+)
+
+garch_posterior_prob1 <- xts(apply(extract(fit, "alpha")[[1]], 2:3, mean)[,1], 
+                            index(IBM.R))
+
+plot(
+  garch_posterior_prob1,
+  main = "Prob Posterior Estado Baja Volatilidad",
+  format.labels = "%y-%m",
+  col="blue",lwd=1
+)
+
+garch_posterior_prob2 <- xts(apply(extract(fit, "alpha")[[1]], 2:3, mean)[,2], 
+                            index(IBM.R))
+plot(
+  garch_posterior_prob2,
+  main = "Prob Posterior Estado Alta Volatilidad",
+  format.labels = "%y-%m",
+  col="red",lwd=1
+)
+
+
+zstar <- xts(apply(extract(fit, "zstar")[[1]], 2, median), 
+                             index(IBM.R))
+plot_statepath(zstar)
+
+```
+
+
+

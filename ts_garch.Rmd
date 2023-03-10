@@ -1,0 +1,70 @@
+---
+title: "Ejemplos"
+author: Lizbeth Naranjo Albarrán y Luz Judith Rodriguez Esparza 
+output: pdf_document
+---
+
+**Paper:** *Modelos ocultos de Markov: 
+una aplicación en series de tiempo*  
+
+**Authors:** Lizbeth Naranjo Albarrán \&
+Luz Judith Rodríguez Esparza  
+
+**Journal:** Mixba'al
+
+**Year:** 2023
+
+https://github.com/lizbethna/HMMaplica
+
+Este archivo muestra las instrucciones para correr los códigos de R y Stan.  
+
+# GARCH 
+
+```{r, echo=TRUE, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE,}
+library(ggplot2)   
+library(rstan) # RStan
+library(quantmod) # Quantitative Financial Modelling Framework
+```
+
+## Datos 
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%"}
+IBM <- getSymbols("IBM",src='yahoo', 
+           from = "2019-01-01", to = "2022-12-31", auto.assign = FALSE)   # Obtener los datos
+IBM.R <- na.omit(ROC(Ad(IBM)));   # Obtener los retornos
+
+plot(IBM, format.labels="%y-%m", col="blue", lwd=0.5)
+plot(IBM.R, format.labels="%y-%m", col="blue", lwd=0.5)
+```
+
+
+## Código Stan 
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%", error=TRUE, verbose=TRUE} 
+IBM.R <- as.vector(coredata(IBM.R)); 
+datos <- list("rend"=IBM.R, "N"=length(IBM.R), "sigma1"=(IBM.R[1]^2))
+param  = c("mu","alpha0","alpha1","beta1") # parametros a estimar
+
+fit_garch <- stan("ts_garch.stan", data=datos,
+            chains=2, warmup=1000, iter=2000, thin=2, 
+            verbose=FALSE)
+```
+
+## Resultados
+
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%", error=TRUE, verbose=TRUE} 
+
+print(fit_garch, pars=param)
+stan_plot(fit_garch,pars=param)
+stan_ac(fit_garch,pars=param)
+stan_trace(fit_garch,pars=param)
+
+stan_dens(fit_garch,pars=param, point_est = "mean", show_density = TRUE) + 
+  ggtitle(paste("Distribución final")) + 
+  theme(axis.title.x=element_text(size=14), axis.title.y=element_text(size=14), 
+        plot.title = element_text(size=16)) 
+
+```
+
+
+
