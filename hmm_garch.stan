@@ -31,11 +31,11 @@ transformed parameters {
   vector[2] log_alpha[T]; // Accumulated (unnormalized) state probabilities
 
   // Transition probabilities
-  matrix[2, 2] A;
-  A[1, 1] =  p_remain[1];
-  A[1, 2] = 1 - p_remain[1];
-  A[2, 1] = 1 - p_remain[2];
-  A[2, 2] = p_remain[2];
+  matrix[2, 2] P;
+  P[1, 1] =  p_remain[1];
+  P[1, 2] = 1 - p_remain[1];
+  P[2, 1] = 1 - p_remain[2];
+  P[2, 2] = p_remain[2];
 
   // GARCH Component
   // ------------------
@@ -76,7 +76,7 @@ transformed parameters {
       for(j in 1:2) { // Current state
         for(i in 1:2) { // Previous state
           accumulator[i] = log_alpha[t-1, i] + // Probability from previous obs
-                           log(A[i, j]) + // Transition probability
+                           log(P[i, j]) + // Transition probability
                            // (Local) likelihood / evidence for given state
                            normal_lpdf(y[t] | 0, sigma_t[t-1, i]);
         }
@@ -128,7 +128,7 @@ generated quantities{
         delta[t, j] = negative_infinity();
         for (i in 1:2) { // i = previous (t-1)
           real logp;
-          logp = delta[t-1, i] + log(A[i, j]) + normal_lpdf(y[t] | 0, sigma_t[t-1, i]);
+          logp = delta[t-1, i] + log(P[i, j]) + normal_lpdf(y[t] | 0, sigma_t[t-1, i]);
           if (logp > delta[t, j]) {
             bpointer[t, j] = i;
             delta[t, j] = logp;

@@ -4,8 +4,10 @@ author: Lizbeth Naranjo Albarrán y Luz Judith Rodriguez Esparza
 output: pdf_document
 ---
 
-**Paper:** *Modelos ocultos de Markov: 
-una aplicación en series de tiempo*  
+
+**Paper:** *Modelos ocultos de Markov:*  
+
+*una aplicación de estimación Bayesiana para series de tiempo financieras*  
 
 **Authors:** Lizbeth Naranjo Albarrán \&
 Luz Judith Rodríguez Esparza  
@@ -14,7 +16,8 @@ Luz Judith Rodríguez Esparza
 
 **Year:** 2023
 
-https://github.com/lizbethna/HMMaplica
+https://github.com/lizbethna/HMMBayes.git
+
 
 Este archivo muestra las instrucciones para correr los códigos de R y Stan.  
 
@@ -61,6 +64,7 @@ stan_trace(fit_garch,pars=param)
 
 stan_dens(fit_garch,pars=param, point_est = "mean", show_density = TRUE) + 
   ggtitle(paste("Distribución final")) + 
+  ylab("Densidad") + 
   theme(axis.title.x=element_text(size=14), axis.title.y=element_text(size=14), 
         plot.title = element_text(size=16)) 
 

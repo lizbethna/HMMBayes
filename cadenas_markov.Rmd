@@ -4,8 +4,9 @@ author: Lizbeth Naranjo Albarrán y Luz Judith Rodriguez Esparza
 output: pdf_document
 ---
 
-**Paper:** *Modelos ocultos de Markov: 
-una aplicación en series de tiempo*  
+**Paper:** *Modelos ocultos de Markov:*  
+
+*una aplicación de estimación Bayesiana para series de tiempo financieras*  
 
 **Authors:** Lizbeth Naranjo Albarrán \&
 Luz Judith Rodríguez Esparza  
@@ -14,7 +15,7 @@ Luz Judith Rodríguez Esparza
 
 **Year:** 2023
 
-https://github.com/lizbethna/HMMaplica
+https://github.com/lizbethna/HMMBayes.git
 
 Este archivo muestra las instrucciones para correr los códigos de R y Stan.  
 
@@ -101,11 +102,11 @@ plot(cadena$z, type="o",col=cadena$z,lwd=0.1,pch=19,
 
 Dada una muestra observada, se busca estimar las probabilidades de transición. 
 
-```{r,eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="100%", error=TRUE} 
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", error=TRUE, out.width="50%"} 
 
 datos <- list( "z"=cadena$z, "N"=N, "K"=K,  # muestra
-              "alpha"=rep(2,K))  # valores iniciales de la distribucion inicial
-param  = c("theta") # parametros a estimar
+              "alpha"=rep(1,K))  # valores iniciales de la distribucion inicial
+param  = c("gama") # parametros a estimar
 
 fit_cm <- stan("cadenas_markov.stan", data=datos,
             chains=2, warmup=1000, iter=2000, thin=2)
@@ -121,8 +122,9 @@ stan_plot(fit_cm,pars=param)
 stan_ac(fit_cm,pars=param)
 stan_trace(fit_cm,pars=param)
 
-stan_dens(fit_cm,pars="theta", point_est = "mean", show_density = TRUE) + 
-  ggtitle(paste("Distribución final de theta")) + 
+stan_dens(fit_cm,pars="gama", point_est = "mean", show_density = TRUE) + 
+  ggtitle(expression(paste("Distribución final de ",Gamma))) + 
+  ylab("Densidad") + 
   theme(axis.title.x=element_text(size=14), axis.title.y=element_text(size=14), 
         plot.title = element_text(size=16)) 
 

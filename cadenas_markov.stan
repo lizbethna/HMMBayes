@@ -12,18 +12,18 @@ data {
 }
 
 parameters {
-  simplex[K] theta[K];                  // probabilidades de transicion
+  simplex[K] gama[K];                  // probabilidades de transicion
                                     // A[i][j] = p(z_t = j | z_{t-1} = i)
 }
 
 
 model {
   for(j in 1:K){
-    theta[j] ~ dirichlet(alpha); 
+    gama[j] ~ dirichlet(alpha); 
   } 
 //  z[1] ~ categorical(di1);
   for(t in 2:N){
-    z[t] ~ categorical(theta[z[t-1]]);
+    z[t] ~ categorical(gama[z[t-1]]);
   }
 }
 
