@@ -4,30 +4,33 @@ author: Lizbeth Naranjo Albarrán y Luz Judith Rodriguez Esparza
 output: pdf_document
 ---
 
-**Paper:** *Modelos ocultos de Markov:*  
+**Paper:** *Modelos ocultos de Markov:*
 
-*una aplicación de estimación Bayesiana para series de tiempo financieras*  
+*una aplicación de estimación Bayesiana para series de tiempo financieras*
 
-**Authors:** Lizbeth Naranjo Albarrán \&
-Luz Judith Rodríguez Esparza  
+**Authors:** Lizbeth Naranjo Albarrán & Luz Judith Rodríguez Esparza
 
 **Journal:** Mixba'al
 
 **Year:** 2023
 
-https://github.com/lizbethna/HMMBayes.git
+<https://github.com/lizbethna/HMMBayes.git>
 
-Este archivo muestra las instrucciones para correr los códigos de R y Stan.  
+Este archivo muestra las instrucciones para correr los códigos de R y Stan.
 
-# Markov switching GARCH 
+
+**Referencia**
+
+Damiano, L., Peterson, B., y Weylandt, M. (2018). A tutorial on hidden Markov models using Stan. En Stan conference.  
+\url{https://github.com/luisdamiano/stancon18}
+
+# Markov switching GARCH
 
 ```{r, echo=TRUE, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE}
 library(ggplot2)   
 library(rstan) # RStan
 library(quantmod) # Quantitative Financial Modelling Framework
 ```
-
-
 
 ```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%"}
 
@@ -62,7 +65,7 @@ plot_statepath <- function(zstar) {
 
 ```
 
-## Datos 
+## Datos
 
 ```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%"}
 IBM <- getSymbols("IBM",src='yahoo', 
@@ -73,10 +76,9 @@ plot(IBM, format.labels="%y-%m", col="blue", lwd=0.5)
 plot(IBM.R, format.labels="%y-%m", col="blue", lwd=0.5)
 ```
 
+## Código Stan
 
-## Código Stan 
-
-```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", error=TRUE, out.width="50%" } 
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", error=TRUE, out.width="50%" }
 # Markov-switching GARCH
 msgarch_fit <- function(y) {
   rstan_options(auto_write = TRUE)
@@ -91,26 +93,27 @@ msgarch_fit <- function(y) {
   )
   
   stan(file = stan.model,
-       data = stan.data, verbose = T,
-       iter = 1000, warmup = 500,
-       thin = 1, chains = 1,
-       cores = 1, seed = 900)
+       data = stan.data, verbose = FALSE,
+       iter = 2000, warmup = 1000,
+       thin = 2, chains = 2,
+       cores = 2, seed = 12345)
 }
 # Fit GARCH
 fit <- msgarch_fit(IBM.R)
 
 
 ```
+
 ## Resultados
 
-```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", error=TRUE, out.width="50%"} 
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", error=TRUE, out.width="50%"}
 
 round(summary(fit, pars=c("alpha0","alpha1","beta1","P"))$summary,3)
 round(summary(fit, pars=c("alpha0","alpha1","beta1","P"))$c_summary,3)
 
 ```
 
-```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%"} 
+```{r, eval=TRUE, include=TRUE, message=FALSE, warning=FALSE, echo=TRUE, cache=FALSE, results=TRUE,  comment="", out.width="50%"}
 
 plot(fit,pars=c("alpha0","alpha1","beta1"))
 plot(fit,pars="p_remain")
@@ -147,7 +150,7 @@ plot(
   garch_posterior_prob1,
   main = "Prob Posterior Estado Baja Volatilidad",
   format.labels = "%y-%m",
-  col="blue",lwd=1
+  col="blue",lwd=1 
 )
 
 garch_posterior_prob2 <- xts(apply(extract(fit, "alpha")[[1]], 2:3, mean)[,2], 
@@ -165,6 +168,4 @@ zstar <- xts(apply(extract(fit, "zstar")[[1]], 2, median),
 plot_statepath(zstar)
 
 ```
-
-
 
